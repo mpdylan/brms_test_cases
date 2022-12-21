@@ -1,16 +1,15 @@
-
-
-# Installation, assumes brms is in a parallel directory
-# Commented out for github version
-setwd('../brms/')
-devtools::install()
-setwd('../brms_test_cases/')
-bikes <- readr::read_csv('data/bike_share_day.csv')
-
+# Test case for latent AR(1) models in brms using records from the Capital Bikeshare
+# program in Washington, D.C.
+# Data available from https://www.kaggle.com/datasets/contactprad/bike-share-daily-data
+# The data record the number of registered, non-registered ("casual"), and total
+# riders on each day of the year in 2011-2012, along with some basic weather information.
+# The goal is to model the number of riders per day.
 library(brms)
 library(tidyverse)
 
 t <- Sys.time()
+
+bikes <- readr::read_csv('data/bike_share_day.csv')
 
 # To save computation time, we cut the training data down to the first
 # 100 days of observations.
@@ -86,7 +85,7 @@ ggsave('plots/bikes_gap.png', p)
 # non-working days, but this is not universal.
 bikes$week <- bikes$instant %/% 7 + 1
 
-truncated_weekly <- bikes %>% filter(week <= 26)
+truncated_weekly <- bikes %>% filter(instant <= 178)
 
 # We drop the wind speed and temperature predictors for clarity of visualization
 # (so that there is only one predicted value per week/group).
@@ -101,9 +100,9 @@ weekly_model <- brm(
   save_pars = save_pars(all = T)
 )
 
-truncated_weekly_ext <- bikes %>% filter(week <= 30) %>% 
+truncated_weekly_ext <- bikes %>% filter(instant <= 180) %>% 
   mutate(registered = c(truncated_weekly$registered,
-                        rep(NA, 28)))
+                        rep(NA, 2)))
 
 system.time(preds <- fitted(weekly_model, truncated_weekly_ext))
 
