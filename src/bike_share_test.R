@@ -41,7 +41,7 @@ p <- cbind(truncated_ext, preds) %>% ggplot() +
   geom_line(aes(x=instant, y=Estimate)) +
   geom_ribbon(aes(x=instant, ymin=Q2.5, ymax=Q97.5), color = NA, alpha = 0.2)
 
-ggsave('plots/bikes_simple.png', p)
+ggsave('plots/bikes/bikes_simple.png', p, width = 7, height = 5)
 
 # Next, we test the ability to interpolate a gap in the time series.
 # First we create a subset of the data with 10 entries missing.
@@ -76,55 +76,22 @@ system.time(preds <- fitted(reg_model, truncated_fill))
 p <- cbind(truncated_fill, preds) %>% ggplot() +
   geom_point(aes(x=instant, y=registered, color = factor(workingday))) +
   geom_line(aes(x=instant, y=Estimate)) +
-  geom_ribbon(aes(x=instant, ymin=Q2.5, ymax=Q97.5), color = NA, alpha = 0.2)
+  geom_ribbon(aes(x=instant, ymin=Q2.5, ymax=Q97.5), color = NA, alpha = 0.2) +
+  guides(color=guide_legend(title="workday"))
 
-ggsave('plots/bikes_gap.png', p)
+ggsave('plots/bikes/bikes_gap.png', p, width=7, height=5)
 
 # Finally, test the functionality of multiple observations per timepoint.
 # To do this, we aggregate by week. Most weeks have 5 working days and 2
 # non-working days, but this is not universal.
 bikes$week <- bikes$instant %/% 7 + 1
 
-truncated_weekly <- bikes %>% filter(instant <= 178)
+truncated_weekly <- bikes %>% filter(week <= 26)
 
 # We drop the wind speed and temperature predictors for clarity of visualization
 # (so that there is only one predicted value per week/group).
 weekly_model <- brm(
   registered ~ 1 + ar(p=1, time = week, gr = workingday, latent = T),
-  data = truncated_weekly,
-  chains = 4,
-  cores = 4,
-  iter = 2000,
-  warmup = 1000,
-  control = list(adapt_delta = 0.97, max_treedepth = 13),
-  save_pars = save_pars(all = T)
-)
-
-truncated_weekly_ext <- bikes %>% filter(instant <= 180) %>% 
-  mutate(registered = c(truncated_weekly$registered,
-                        rep(NA, 2)))
-
-system.time(preds <- fitted(weekly_model, truncated_weekly_ext))
-
-# Weekly plot, split by working/non-working days
-p <- cbind(truncated_weekly_ext, preds) %>% ggplot() +
-  geom_point(aes(x=week, y=registered, color = factor(workingday))) +
-  geom_line(aes(x=week, y=Estimate, color = factor(workingday)))
-
-ggsave('plots/bikes_weekly.png', p)
-
-# Split out into daily observations
-p <- cbind(truncated_weekly_ext, preds) %>% ggplot() +
-  geom_point(aes(x=instant, y=registered, color = factor(workingday))) +
-  geom_line(aes(x=instant, y=Estimate, color = factor(workingday)))
-
-ggsave('plots/bikes_weekly_disagg.png', p)
-
-# Finally, adding back in the linear predictors:
-
-weekly_model <- brm(
-  registered ~ 1 + windspeed + temp + 
-    ar(p=1, time = week, gr = workingday, latent = T),
   data = truncated_weekly,
   chains = 4,
   cores = 4,
@@ -143,15 +110,53 @@ system.time(preds <- fitted(weekly_model, truncated_weekly_ext))
 # Weekly plot, split by working/non-working days
 p <- cbind(truncated_weekly_ext, preds) %>% ggplot() +
   geom_point(aes(x=week, y=registered, color = factor(workingday))) +
-  geom_line(aes(x=week, y=Estimate, color = factor(workingday)))
+  geom_line(aes(x=week, y=Estimate, color = factor(workingday))) +
+  guides(color=guide_legend(title="workday"))
 
-ggsave('plots/bikes_weekly_weather.png', p)
+ggsave('plots/bikes/bikes_weekly.png', p, width = 7, height = 5)
 
 # Split out into daily observations
 p <- cbind(truncated_weekly_ext, preds) %>% ggplot() +
   geom_point(aes(x=instant, y=registered, color = factor(workingday))) +
-  geom_line(aes(x=instant, y=Estimate, color = factor(workingday)))
+  geom_line(aes(x=instant, y=Estimate, color = factor(workingday))) +
+  guides(color=guide_legend(title="workday"))
 
-ggsave('plots/bikes_weekly_weather_disagg.png', p)
+ggsave('plots/bikes/bikes_weekly_disagg.png', p, width = 7, height = 5)
+
+# Finally, adding back in the linear predictors:
+
+weekly_model <- brm(
+  registered ~ 1 + windspeed + temp + 
+    ar(p=1, time = week, gr = workingday, latent = T),
+  data = truncated_weekly,
+  chains = 4,
+  cores = 4,
+  iter = 2000,
+  warmup = 1000,
+  control = list(adapt_delta = 0.97, max_treedepth = 13),
+  save_pars = save_pars(all = T)
+)
+
+truncated_weekly_ext <- bikes %>% filter(instant <= 30) %>% 
+  mutate(registered = c(truncated_weekly$registered,
+                        rep(NA, 28)))
+
+system.time(preds <- fitted(weekly_model, truncated_weekly_ext))
+
+# Weekly plot, split by working/non-working days
+p <- cbind(truncated_weekly_ext, preds) %>% ggplot() +
+  geom_point(aes(x=week, y=registered, color = factor(workingday))) +
+  geom_line(aes(x=week, y=Estimate, color = factor(workingday))) +
+  guides(color=guide_legend(title="workday"))
+
+ggsave('plots/bikes/bikes_weekly_weather.png', p, width = 7, height = 5)
+
+# Split out into daily observations
+p <- cbind(truncated_weekly_ext, preds) %>% ggplot() +
+  geom_point(aes(x=instant, y=registered, color = factor(workingday))) +
+  geom_line(aes(x=instant, y=Estimate, color = factor(workingday))) +
+  guides(color=guide_legend(title="workday"))
+
+ggsave('plots/bikes/bikes_weekly_weather_disagg.png', p, width = 7, height = 5)
 
 Sys.time() - t
