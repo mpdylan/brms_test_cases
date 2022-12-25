@@ -137,10 +137,6 @@ weekly_model <- brm(
   save_pars = save_pars(all = T)
 )
 
-truncated_weekly_ext <- bikes %>% filter(instant <= 30) %>% 
-  mutate(registered = c(truncated_weekly$registered,
-                        rep(NA, 28)))
-
 system.time(preds <- fitted(weekly_model, truncated_weekly_ext))
 
 # Weekly plot, split by working/non-working days

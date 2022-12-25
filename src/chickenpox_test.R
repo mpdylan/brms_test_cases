@@ -52,6 +52,55 @@ p <- pred_for_plot %>% ggplot() +
 
 ggsave('plots/chickenpox/chickenpox.png', p, width = 9, height = 7)
 
+# Test the latent parameterization with no time variable 
+# Shorter to cut down computation a bit more
+pox_shorter <- pox_truncated %>% filter(week_t <= 75)
+
+no_time_model <- 
+  brm(
+    value ~ (1 | City) + arma(p=1, q=1, gr = City, latent=T),
+    data = pox_shorter,
+    family = poisson(),
+    chains = 4,
+    cores = 4, 
+    warmup = 1000,
+    iter = 2000,
+    control = list(adapt_delta = 0.99, max_treedepth = 14),
+    save_pars = save_pars(all = TRUE)
+  )
+
+pox_pred <- pox_truncated %>% filter(week_t <= 90)
+
+pred_for_plot <- cbind(pox_pred, fitted(no_time_model, newdata = pox_pred))
+
+p <- pred_for_plot %>% ggplot() + 
+  geom_line(aes(x=week_t, y=Estimate, color=City))
+
+ggsave('plots/chickenpox/chickenpox_no_time.png', p, width = 9, height = 7)
+
+# Try with no time, no grouping, and no predictors -- just ARMA
+budapest_only <- pox_shorter %>% filter(City == "BUDAPEST")
+
+empty_model <-
+  brm(
+    value ~ 1 + arma(p=1, q=1, latent=T),
+    data = budapest_only,
+    family = poisson(),
+    chains = 4,
+    cores = 4, 
+    warmup = 1000,
+    iter = 2000,
+    control = list(adapt_delta = 0.99, max_treedepth = 14),
+    save_pars = save_pars(all = TRUE)
+  )
+
+pox_pred <- pox_truncated %>% filter(week_t <= 90, City == "BUDAPEST")
+
+pred_for_plot <- cbind(pox_pred, fitted(empty_model, newdata = pox_pred))
+
+p <- pred_for_plot %>% ggplot() + 
+  geom_line(aes(x=week_t, y=Estimate, color=City))
+
 elapsed <- Sys.time() - t
 
 # Can extract the latent parameters, split by city
