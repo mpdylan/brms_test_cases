@@ -11,6 +11,8 @@ t <- Sys.time()
 
 bikes <- readr::read_csv('data/bike_share_day.csv')
 
+set.seed(9931)
+
 # To save computation time, we cut the training data down to the first
 # 100 days of observations.
 truncated <- bikes %>% filter(instant <= 100)
